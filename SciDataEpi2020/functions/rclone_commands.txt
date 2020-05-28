@@ -1,0 +1,17 @@
+rclone -v copy Gdrive:VDRIVE\ backup/vdrive\ 2018\ August/Documents/Thesis/text\ mining/TM_temp/scripts\ and\ functions/functions/ ~/Documents/Rlib/functions
+
+rclone -v --stats 10s copy Gdrive:VDRIVE\ backup/vdrive\ 2018\ August/Documents/Projects/ALFNA/ALFNA_VKS/scripts/functions/similar.r ~/Documents/Rlib/functions
+
+rclone -v --stats 10s copy Gdrive:VDRIVE\ backup/vdrive\ 2018\ August/Documents/R\ stuff/Rscript\ functions/plotHL.r ~/Documents/Rlib/functions
+
+
+
+
+
+#########   REVERSE #####################
+
+rclone -v --stats 10s copy  ~/Documents/Rlib/functions Gdrive:Rlib/functions
+
+
+
+
