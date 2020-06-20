@@ -8,11 +8,13 @@
     if(missing(bar.width)){bar.width = (label.cov / (J-1))}
     bp1 <- seq(-label.cov, label.cov-bar.width, length=J)
     bp2 <- seq(-label.cov+bar.width, label.cov, length=J)
-  
+    bar.coords <- data.frame(numeric(), numeric())
+    
     plot(seq(1-label.cov,L+label.cov,length=L),seq(0,max(data)*1.1,length=L), pch=NA, xaxt="n", ylab=ylab, xlab=xlab, cex.axis=cex, cex.lab=cex, ...)
     for(i in 1:L){
       for(j in 1:J){
         rect(i+bp1[j], 0, i+bp2[j], data[i,j], col=col[j],...)
+        bar.coords[((i-1)*2)+j,] = c(mean(c(i+bp1[j],i+bp2[j])), data[i,j])
       }
     }
     axis(1, at=(1:L), labels=rownames(data), cex.axis= cex, ...)
@@ -25,7 +27,8 @@
           #arrows(i+bp1[j], 0, i+bp2[j], data[i,j], col=col[j],...)
         }
       }
-    }  
+    } 
+    return(bar.coords)
   }
 
 
