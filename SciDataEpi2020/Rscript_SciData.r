@@ -16,7 +16,7 @@ main.dir = paste("output/v_", analysis.version, sep="")
 # meta packages
   library(rmarkdown)
   library(knitr)
-  opts_chunk$set(tidy.opts=list(width.cutoff=60),tidy=TRUE)
+  opts_chunk$set(tidy.opts=list(width.cutoff=60), tidy=TRUE)
 
 # get new packages?
   GetPackages=F

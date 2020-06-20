@@ -1,20 +1,20 @@
 
 ---
-title: 'Scientific Data 2020. Analysis and code.'
+title: 'Epicardial Cardiomyocyte Interactome 2020. Analysis and code.'
 author: "Vincent Knight-Schrijver"
 date: "`r format(Sys.time(), '%d %B %Y')`"
 output:
  rmarkdown::pdf_document:
    includes:
      fig_caption: yes
-     in_header: RMD_materials/report_preamble.tex
+     in_header: /home/vincent/Documents/documentation/RMD_materials/report_preamble.tex
 urlcolor: blue
 ---
 \sffamily
 \renewcommand{\familydefault}{\sfdefault}
 \addtolength{\headheight}{1.0cm}
 \pagestyle{fancyplain}
-\rhead{V. R. Knight-Schrijver  \includegraphics[width=0.2\linewidth]{RMD_materials/header_logos.png}}
+\rhead{V. R. Knight-Schrijver  \includegraphics[width=0.2\linewidth]{/home/vincent/Documents/documentation/RMD_materials/header_logos.png}}
 \renewcommand{\headrulewidth}{0pt}
 
 ---
@@ -55,13 +55,18 @@ require perhaps unusual packages. However most code is written with base R in mi
 It may be best (for your own sanity) not to peruse all functions as most of them are barely 
 annotated.
 
-```{r, eval=F, message=T, echo=T, tidy=F}
-# Function to load functions
-  source("load_functions.r")
-  
+```{r R_housekeeping, eval=F, message=T, echo=T, tidy=F}
+# Packages to load
+ library(DESeq2)
+ library(tximport)
+ library(wordcloud)
+ 
 # functions directory
   func.dir="functions"
   
+# Function to load functions
+  source(file.path(func.dir, "load_functions.r"))
+
 # run the load functions function  
   load.functions(func.dir)
 ```
@@ -72,7 +77,7 @@ annotated.
   composed of raw and uncorrected reads is contained within the data matrix **bulk7_counts.csv**.
 
   
-```{r, eval=F, message=T, echo=T, tidy=F}
+```{r import_house_data, eval=F, message=T, echo=T, tidy=F}
 
 # Begin generally with importing the data... easy enough
   bulk7 <- read.csv("data/bulk7/bulk7_counts.csv", head=T, row.names=1, stringsAsFactors=F)
@@ -94,7 +99,7 @@ annotated.
   uneccessarily.
   
 
-```{r, eval=F, message=T, echo=T, tidy=T}
+```{r pseudoalignment, eval=F, message=T, echo=T, tidy=T}
 
 ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## 
 # FASTQC
@@ -199,7 +204,7 @@ as exons or isoforms. There are several methods that we can do this:
 We opted to write a quick FASTA parser to grab the gene name information from the cDNA information file as this should be the 
 best representation of our transcript index.
 
-```{r, eval=F, message=T, echo=T, tidy=F}
+```{r import_EPI_data, eval=F, message=T, echo=T, tidy=F}
 # We have indexed our list of transcripts using the compressed fasta. 
 # Let's find this and parse it.
   
@@ -229,7 +234,7 @@ With our estimates created and our transcript to gene file available, the next s
 will be to import the data using the functions from the DESeq2 package. Here we import 
 with the *tximport* function and generate a matrix called **CM.counts**.
 
-```{r, eval=F, message=T, echo=T, tidy=F}
+```{r import_CM_data, eval=F, message=T, echo=T, tidy=F}
 # The next step is to read our kallisto estimates in using our map csv. This is 
 # part of the recommended workflow from DESeq2 vignette.
 
@@ -273,7 +278,7 @@ This section of the report code generates the technical validation information. 
 We begin with examining the depth saturation of the epicardial dataset, creating many sub-sampled counts at an 
 increasing number using a hypergeometric distribution.
 
-```{r, eval=T, message=T, echo=T, tidy=F, fig.width=12, fig.height=8,  fig.align='center', out.width="1\\linewidth", fig.cap="\\label{fig1} Expressed gene detection saturation curves."}
+```{r depth_saturation, eval=T, message=T, echo=T, tidy=F, fig.width=12, fig.height=8,  fig.align='center', out.width="1\\linewidth", fig.cap="\\label{fig1} Expressed gene detection saturation curves."}
 # Gene / read depth saturation curves / analysis
 
 # Utilise a hypergeometric distribution to subsample our data. 
@@ -399,7 +404,7 @@ The next step of technical validation is to ensure we are examining the correct 
 make an interactome of the wrong tissues after all! To do this We defined a set of putative markers, as can be readily 
 found in scientific literature.
 
-```{r, eval=T, message=T, echo=T, tidy=F}
+```{r key_markers, eval=T, message=T, echo=T, tidy=F}
 
 # Key markers
   CM.markers <- c(
@@ -433,7 +438,7 @@ We are going to deal with a normalised value of expression. As such we calculate
 and re-read the hESC-CM data as transcripts per million from the output of the Kallisto pseudoalignment.
 
 
-```{r, eval=T, message=T, echo=T, tidy=F, fig.width=8, fig.height=3,  fig.align='center', out.width="1\\linewidth", fig.cap="\\label{fig2} Gene markers for cell line validation."}
+```{r celltype_validation, eval=T, message=T, echo=T, tidy=F, fig.width=8, fig.height=3,  fig.align='center', out.width="1\\linewidth", fig.cap="\\label{fig2} Gene markers for cell line validation."}
 # EPI DATASET   
 # Create a very quick size factor calculation...
 # Counts per million
@@ -623,7 +628,7 @@ our cell types of interest had significantly greater expression of positive mark
 significantly lower expression of negative marker genes.
 
 
-```{r, eval=T, message=T, echo=T, tidy=F}
+```{r t_tests, eval=T, message=T, echo=T, tidy=F}
   
 # Welches two sample t tests
   CM.ttest.list <- lapply(unique(CM.genes.df[,2]), function(gene){
@@ -662,37 +667,52 @@ important with a low number of samples per condition as we have in this analysis
 show this correlation. The numbers are also calculated in this next section of code.
 
 
-```{r, eval=T, message=T, echo=T, tidy=F, fig.width=8, fig.height=8,  fig.align='center', out.width="0.8\\linewidth", fig.cap="\\label{fig3} Replicate correlation plots"}
+```{r replicate_correlations, eval=T, message=T, echo=T, tidy=F}
 
 ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## 
 ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## 
 # Correlations as per Spearmans
 # To conform with guidelines for isogenic sample replicates
-  
+# Note - we write as png to reduce the file size resulting from the
+# vast number of data points.
+
  CM.cors <- cor(CM.counts, method="spearman")
+ jpeg("output/v_SciData/technical_validation/figures/CM_correlations.jpg")
  par(mar=c(5,5,5,5), omi=c(1,1,1,1), oma=c(0,0,0,0))
-    plot(as.data.frame(CM.counts),main="Spearmans Rho", col="indianred2")
+    plot(as.data.frame(CM.counts),main="Spearmans Rho", col=Discrete[7])
     for(i in 1:16){
     par(fig=as.numeric(subplot.coords(4,4, c(0.1, 0.9, 0.15, 0.95))[i,]))
     }
-  CM.cors  
+  dev.off()
     
   EPI.cors <- cor(EPI.counts, method="spearman")
+  jpeg("output/v_SciData/technical_validation/figures/EPI_correlations.jpg")
   par(mar=c(5,5,5,5), omi=c(1,1,1,1), oma=c(0,0,0,0))
-    plot(as.data.frame(EPI.counts),main="Spearmans Rho", col="steelblue2")
+    plot(as.data.frame(EPI.counts),main="Spearmans Rho", col=Discrete[6])
     for(i in 1:36){
     par(fig=as.numeric(subplot.coords(6,6, c(0.1, 0.9, 0.15, 0.95))[i,]))
     }
-  EPI.cors
-  
+  dev.off()
+```
 
+```{r print_correlations, eval=T, message=F, echo=F, tidy=F}
+CM.cors
+EPI.cors
+
+```
+
+```{r figure3a, echo=FALSE, fig.cap="\\label{fig3a} Replicate correlation plots for CM data", out.width = '70%'}
+knitr::include_graphics("output/v_SciData/technical_validation/figures/CM_correlations.jpg")
+```
+```{r figure3b, echo=FALSE, fig.cap="\\label{fig3b} Replicate correlation plots for EPI data", out.width = '70%'}
+knitr::include_graphics("output/v_SciData/technical_validation/figures/EPI_correlations.jpg")
 ```
 
 ## Feature processing
 Before moving forward onto differential expression analysis we must consider a very slight 
 data cleaning. We remove all genes that are no read, doing so for each sample independently. 
 
-```{r, eval=F, message=T, echo=T, tidy=F}
+```{r feature_processing, eval=F, message=T, echo=T, tidy=F}
 # We remove all genes with 0 reads in all samples...
 # creating expressed genes vectors for both
   A.express = names(which(rowSums(EPI.counts) > 0 ))
@@ -719,7 +739,7 @@ Differential expression analysis is relatively simple with the toolset of the mo
 are also dealing with bulk RNA-seq data which is much more straightforward than its single-cell counterpart. I begin with the
 **EPI.counts** dataset, creating the DESeq object and performingthe analaysis. The procedure is repeated for the CM.counts data.
 
-```{r, eval=F, message=T, echo=T, tidy=F}
+```{r DESEQ2, eval=F, message=T, echo=T, tidy=F}
 
 # 1. What genes are upregulated in our EPI dataset vs the NC negative control?
 # We first grab the EPI dataset
@@ -766,7 +786,7 @@ are also dealing with bulk RNA-seq data which is much more straightforward than 
 These will be re-ordered the lists by log2 fold change to make the 
 results a little more meaningful for now.
 
-```{r, eval=F, message=T, echo=T, tidy=F}
+```{r results_cleaning, eval=F, message=T, echo=T, tidy=F}
 # EPI results dataset
     EPI.res <- resLFC.A
   # remove NAs for our analysis...  These are not good genes.
@@ -786,7 +806,7 @@ results a little more meaningful for now.
     CM.res.cut.lfc <- CM.res.cut[order(-CM.res.cut[,2]),]
    
 ```
-```{r, eval=T, message=T, echo=T, tidy=F}
+```{r results_head, eval=T, message=T, echo=T, tidy=F}
   head(EPI.res.cut.lfc[,c(2,5)],10)
   head(CM.res.cut.lfc[,c(2,5)],10)
 ```
@@ -803,16 +823,14 @@ For reference, the secretome and membranome here both contain genes which can be
 soluble isoforms or cleaved portions. For reference, these datasets may have been updated since the analysis. The HPA data here 
 was accessed on the 23rd of March 2020.
 
-```{r, eval=F, message=T, echo=T, tidy=T}
+```{r secretome_membranome, eval=F, message=T, echo=T, tidy=T}
 # Dataset loading
   # Acquire the likely secretome from protein atlas
-    secretome = read.csv("https://www.proteinatlas.org/search/
-      protein_class%3APredicted+secreted+proteins?format=tsv", 
+    secretome = read.csv("https://www.proteinatlas.org/search/protein_class%3APredicted+secreted+proteins?format=tsv", 
       head=T, stringsAsFactors=F, sep="\t")
     secretome.genes <- secretome[,1]
   # Acquire the likely membranome from protein atlas
-    membranome = read.csv("https://www.proteinatlas.org/search/
-      protein_class%3APredicted+membrane+proteins?format=tsv", 
+    membranome = read.csv("https://www.proteinatlas.org/search/protein_class%3APredicted+membrane+proteins?format=tsv", 
       head=T, stringsAsFactors=F, sep="\t")
     membranome.genes <- membranome[,1]
 ```
@@ -825,7 +843,7 @@ Additionally, I download the information file as we need to convert the ensemblI
 in R with "In scan(file = file, what = what, sep = sep, quote = quote, dec = dec,  :
   EOF within quoted string". This was found to be a unclosed double quote on line 12364, column 399 gene (UCHL3).
 
-```{r, eval=F, message=T, echo=T, tidy=F}
+```{r interactome_processing, eval=F, message=T, echo=T, tidy=F}
 # We first load up the stringDB database file using the per-channel scores. 
 # This may be key as we can filter the list down by interactions only 
 # through experimental evidence.
@@ -854,7 +872,7 @@ interactome. Changing this this number can be a matter of debate. Moreover, we c
 filtering only over that evidence column. Additionally, I retained the scores for both the experimental only and combined 
 columns.
 
-```{r, eval=F, message=T, echo=T, tidy=F}
+```{r interactome_dataframe, eval=F, message=T, echo=T, tidy=F}
   score.threshold <- 700
   stringDB.full <- stringDB2[,c(1,2,7,10)]
 ```
@@ -864,7 +882,7 @@ This is repeated for the cardiomyocytes and the membranome. By selectively searc
 first column, we can identify the complementary protein or interactor in the second column. If we use the epicardial secreted 
 factors that means we will find their complement. Then, we repeat for the CMs and the membranome. 
 
-```{r, eval=F, message=T, echo=T, tidy=F}
+```{r interactome_construction, eval=F, message=T, echo=T, tidy=F}
  
 # Identify those interactions from the epicardial upregulated genes.
   # EPI results dataset
@@ -940,7 +958,7 @@ with this epicardial secretome, and **CM[,1]** are the membrane-proteins of the 
 if we then identify where **EPI[,2]**is in **CM[,1]** we will find the CM membrane-bound proteins that 
 interact with EPI-secreted proteins. 
 
-```{r, eval=F, message=T, echo=T, tidy=F}
+```{r interactome_construction_2, eval=F, message=T, echo=T, tidy=F}
 # Matching the secretome where secreted genes appear in the secretome column 
 # of the CM membrane interaction.
   EPI.CM.interactome <- EPI.secretome.interactome[
@@ -973,21 +991,100 @@ interact with EPI-secreted proteins.
   
 ```
 
-We further refine this list to retain only proteins that are secreted by the EPI, and not those which are also 
-secreted by the CMs (**Int.F1**). Additionally we filter out the proteins that are membrane-bound in both cell types (**Int.F2**).
+We further refine this list to retain only proteins that are more highly secreted in the EPI than the CM cells. 
+The rational for this is to exclude secreted factors from CM that are autocrine in the hopes of creating a 
+list of EPI specific genes for further exploration of the EPI effect on CM-based therapies. To do this we normalised 
+within samples to the counts per million and perform a basic independent samples t test. 
+We found that secreted genes were (*p < 0.05*).
+
+```{r interactome_filtering, eval=F, message=T, echo=T, tidy=F}
+  sec.genes <- unique((EPI.CM.interactome.cut[,1]))
+    
+  # First we create the CPM matrices
+  # CM DATASET   
+  # Create a very quick size factor calculation...
+  # Counts per million
+    cm.sf <- colSums(CM.counts+1)/1e6
+
+  # and normalise...
+    CM.cpm <- t(t(CM.counts+1)/cm.sf)
+    
+    CM.cpm.sec = CM.cpm[sec.genes,3:4]
+    
+
+  # EPI DATASET   
+  # Create a very quick size factor calculation...
+  # Counts per million
+    epi.sf <- colSums(EPI.counts+1)/1e6
+
+  # and normalise...
+    EPI.cpm <- t(t(EPI.counts+1)/epi.sf)
+    
+    EPI.cpm.sec = EPI.cpm[sec.genes,1:3]
 
 
-```{r, eval=F, message=T, echo=T, tidy=F}
-# filter out EPI secreted proteins that are also secreted in CM:
-  Int.F1 <- EPI.CM.interactome.ext[!(EPI.CM.interactome.ext[,1] %in% 
-              rownames(CM.res.cut.lfc[CM.res.cut.lfc[,2] > 0,])),]
+# Take a log of the CPM (logCPM)
+    EPI.logcpm.sec <- log(EPI.cpm.sec + 1)
+    CM.logcpm.sec  <- log(CM.cpm.sec  + 1)
+
+
+# CPM means dataframe 
+# Dataframe for results
+  cpm.df <- data.frame(row.names=sec.genes, rowMeans(EPI.logcpm.sec), 
+                        rowMeans(CM.logcpm.sec))
+    cpm.order <- order(-(cpm.df[,1]  - cpm.df[,2]))
+  cpm.df <- cpm.df[cpm.order,]  
+
+# sd CPM error bars dataframe    
+  error.df <- data.frame(row.names=sec.genes, rowSds(EPI.logcpm.sec), 
+                          rowSds(CM.logcpm.sec))
+    error.df <- error.df[cpm.order,]  
+
+# t tests for our datasets
+# We can't really be sure of the distributions though... 
+# Certainly because the n = 3 and n = 2
+  ttest.p <- data.frame(row.names=sec.genes[cpm.order], 
+              -(cpm.df[,1]  - cpm.df[,2]),
+              round(sapply(1:length(sec.genes), function(i) {
+              t.test(EPI.logcpm.sec[i,], CM.logcpm.sec[i,], paired=F)$p.value
+              }),3)[cpm.order]
+             )
+# Threshold    for t test cutoff          
+  ttest.cut <- ttest.p[,2] < 0.05
+
+# A list of all genes which are significantly more expressed in EPI
+  epi.sec <- rownames(ttest.p)[ttest.p[,2] < 0.05 & ttest.p[,1] < 0]
+
+# subset the interactome results table by the significantly "more EPI" genes
+  EPI.CM.interactome_EPI.secreted <- EPI.CM.interactome.cut[
+                                      EPI.CM.interactome.cut[,1] %in% epi.sec,
+                                     ]
  
-# filter out proteins that are membrane-bound in BOTH EPI and CM
-  Int.F2 <- Int.F1[!(Int.F1[,2] %in% rownames(EPI.res.cut.lfc)),]
-  Int.F2 <- Int.F1[!(Int.F1[,2] %in% 
-              rownames(EPI.res.cut.lfc[EPI.res.cut.lfc[,2] > 0,])),]
-  Int.F2 <- Int.F2[order(-Int.F2$L2FC.average),]
-  Int.F2
+```
+
+
+```{r plotting_bars, eval=T, fig.width=15, fig.height=10,  fig.align='center', out.width="1\\linewidth", fig.cap="\\label{fig4} bar chart for the CPM of EPI and CM secreted factors. Asterisks illustrate significant genes."}
+  
+# dataframe of x and y coordinates (results from bars function)     #  
+  bar.coords <- bars(cpm.df, error.data = error.df,
+    col=c(Discrete[6], Discrete[7]), bar.width=0.31, 
+    ylab="log CPM", xaxt="n"
+  )
+# legend
+  legend("topright", legend=c("EPI", "CM"),
+    col=c(Discrete[6], Discrete[7]), pch=15, bty="n")
+
+# Axis labels
+  axis(1, at=c(1:length(cpm.df[,1])), labels=rownames(cpm.df), las=2)
+
+# Error points
+  points(bar.coords[rep(ttest.cut, each=2),1], 
+    bar.coords[rep(ttest.cut, each=2),2]+0.6, pch="*")
+
+# line to separate more or less expressedin EPI 
+  abline(v=which(ttest.p[,1] > 0)[1]-0.5, lty=2)
+
+
 ```
 
 # Plotting
@@ -995,8 +1092,7 @@ Now that we have created our interactome. We can plot some of the results in a v
 connections between cells, it was only fair to draw a combined volcano plot figure.
 
 
-```{r, eval=T, fig.width=15, fig.height=10,  fig.align='center', out.width="1\\linewidth", fig.cap="\\label{fig4} The top 10 differentially upregulated hits for both EPI and CM, linked by their interactome from stringDB"}
-  interactome.dataframe <- Int.F2
+```{r plotting_volcano, eval=T, fig.width=15, fig.height=10,  fig.align='center', out.width="1\\linewidth", fig.cap="\\label{fig5} The top 10 differentially upregulated hits for both EPI and CM, linked by their interactome from stringDB"}
   interactome.dataframe <- EPI.CM.interactome.cut
 # DESEQ2 results visualisation:
 # Cardio
