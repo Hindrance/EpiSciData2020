@@ -179,22 +179,147 @@
 
 # We are interested to refine this list, perhaps retaining only those genes
 # which are secreted by the EPI, and not those which are also secreted by the 
-# CMs.
+# CMs. To do this we attempt to compare between experimental groups, 
+# looking at counts per million read as a normalised between group approach. 
+  sec.genes <- unique((EPI.CM.interactome.cut[,1]))
+    
+  # First we create the CPM matrices
+  # CM DATASET   
+  # Create a very quick size factor calculation...
+  # Counts per million
+    cm.sf <- colSums(CM.counts+1)/1e6
 
-# filter out proteins that are secreted in BOTH epi and CM:
-  Int.F1 <- EPI.CM.interactome.cut[!(EPI.CM.interactome.cut[,1] %in% rownames(CM.res.cut.lfc[CM.res.cut.lfc[,2] > 0,])),]
+  # and normalise...
+    CM.cpm <- t(t(CM.counts+1)/cm.sf)
+    
+    CM.cpm.sec = CM.cpm[sec.genes,3:4]
+    
+
+  # EPI DATASET   
+  # Create a very quick size factor calculation...
+  # Counts per million
+    epi.sf <- colSums(EPI.counts+1)/1e6
+
+  # and normalise...
+    EPI.cpm <- t(t(EPI.counts+1)/epi.sf)
+    
+    EPI.cpm.sec = EPI.cpm[sec.genes,1:3]
+
+
+# Take a log of the CPM (logCPM)
+    EPI.logcpm.sec <- log(EPI.cpm.sec + 1)
+    CM.logcpm.sec  <- log(CM.cpm.sec  + 1)
+
+# CPM means dataframe 
+# Dataframe for results
+  cpm.df <- data.frame(row.names=sec.genes, rowMeans(EPI.logcpm.sec), rowMeans(CM.logcpm.sec))
+    cpm.order <- order(-(cpm.df[,1]  - cpm.df[,2]))
+  cpm.df <- cpm.df[cpm.order,]  
+
+# sd CPM error bars dataframe    
+  error.df <- data.frame(row.names=sec.genes, rowSds(EPI.logcpm.sec), rowSds(CM.logcpm.sec))
+    error.df <- error.df[cpm.order,]  
+
+# t tests for our datasets
+# We can't really be sure of the distributions though... 
+# Certainly because the n = 3 and n = 2
+  ttest.p <- data.frame(row.names=sec.genes[cpm.order], 
+              -(cpm.df[,1]  - cpm.df[,2]),
+              round(sapply(1:length(sec.genes), function(i) {
+              t.test(EPI.logcpm.sec[i,], CM.logcpm.sec[i,], paired=F)$p.value
+              }),3)[cpm.order]
+             )
+# Threshold    for t test cutoff          
+  ttest.cut <- ttest.p[,2] < 0.05
+
+# A list of all genes which are significantly more expressed in EPI
+  epi.sec <- rownames(ttest.p)[ttest.p[,2] < 0.05 & ttest.p[,1] < 0]
+
+# subset the interactome results table by the significantly "more EPI" genes
+  EPI.CM.interactome_EPI.secreted <- EPI.CM.interactome.cut[EPI.CM.interactome.cut[,1] %in% epi.sec,]
+    write.table(EPI.CM.interactome_EPI.secreted, file=file.path(script.dir, "EPI_CM_interactome_EPI_secreted_all_information.csv"), sep=",", col.names=T, row.names=F, quote=F)
+    write.table(EPI.CM.interactome_EPI.secreted[,c(1,2,4)], file=file.path(script.dir, "EPI_CM_interactome_EPI_secreted.csv"), sep=",", col.names=T, row.names=F, quote=F)
+    write.table(EPI.CM.interactome_EPI.secreted[,1], file=file.path(script.dir, "EPI_interactome_EPI_secreted.txt"), sep="\t", col.names=F, row.names=F, quote=F)
   
-# filter out proteins that are membrane-bound in BOTH EPI and CM
-  Int.F2 <- Int.F1[!(Int.F1[,2] %in% rownames(EPI.res.cut.lfc)),]
-  Int.F2 <- Int.F1[!(Int.F1[,2] %in% rownames(EPI.res.cut.lfc[EPI.res.cut.lfc[,2] > 0,])),]
-  Int.F2 <- Int.F2[order(-Int.F2$L2FC.average),]
-    write.table(Int.F2, file=file.path(script.dir, "Intersect_filter2_all_information.csv"), sep=",", col.names=T, row.names=F, quote=F)
-    write.table(Int.F2[,c(1,2,4)], file=file.path(script.dir, "Intersect_filter2.csv"), sep=",", col.names=T, row.names=F, quote=F)
-    write.table(Int.F2[,1], file=file.path(script.dir, "Intersect_filter2_all.txt"), sep="\t", col.names=F, row.names=F, quote=F)
+ 
+## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## 
+## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ##
+## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ##
+## BAR CHARTS
+  
+# dataframe of x and y coordinates (results from bars function)     #  
+  bar.coords <- bars(cpm.df, error.data = error.df,
+    col=c(Discrete[6], Discrete[7]), bar.width=0.31, ylab="log CPM", xaxt="n")
+# legend
+  legend("topright", legend=c("EPI", "CM"),
+    col=c(Discrete[6], Discrete[7]), pch=15, bty="n")
 
+# Axis labels
+  axis(1, at=c(1:length(cpm.df[,1])), labels=rownames(cpm.df), las=2)
 
-#######################################################
+# Error points
+  points(bar.coords[rep(ttest.cut, each=2),1], bar.coords[rep(ttest.cut, each=2),2]+0.6, pch="*")
 
+# line to separate more or less expressedin EPI 
+  abline(v=which(ttest.p[,1] > 0)[1]-0.5, lty=2)
 
+#  order:
+#  RSPO1     LGR5
+#  RSPO1     LGR4
+#  RSPO1     RNF43
+#  
+#  NTF4      NTRK2
+#  NTF4      BDNF
+#  
+#  LY96      TLR4
+#  
+#  TGFB1     ITGB6
+#  TGFB1     ITGAV
+#  
+#  BMP4      BMPR1B
+#  BMP4      ACVR2A
+#    
+#  IGF2      CLN5
+#  
+#  INS-IGF2  SPN
 
+#  IL6ST     IL6R
+#  
+#  APOC1     MPC2
+#  
+#  PVR       TIGIT 
+#  
+#  PCDHA10   PCDHA9
+#  PCDHA10   PCDHA6 
+#  
+#  TIMP1     MMP14
+#  
+#  AGRN      LRP4
+#  
+#  
+#  
+#  
+#  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
   
