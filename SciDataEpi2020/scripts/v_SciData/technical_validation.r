@@ -131,8 +131,8 @@
   lines(x[,2], y[,2], col=Discrete[9], lty=2)
   lines(x[,3], y[,3], col=Discrete[7])
   lines(x[,4], y[,4], col=Discrete[7], lty=2)
-  text(tail(x[,1],1), tail(y[,1],1)-1000, c("D0"), cex=1, col=Discrete[9])
-  text(tail(x[,4],1), tail(y[,4],1)-1000, c("D30"), cex=1, col=Discrete[7])
+  text(tail(x[,1],1), tail(y[,1],1)-1000, c("H9), cex=1, col=Discrete[9])
+  text(tail(x[,4],1), tail(y[,4],1)-1000, c("CM"), cex=1, col=Discrete[7])
 
   abline(v = 3e7, lty=2)
   abline(v = 2e7, lty=3)
@@ -208,85 +208,57 @@
 # combine them:
   EPI.genes.df <- rbind(EPI.genes.df, NC.genes.df)
  
- ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## 
-  
- 
-# The Kallisto datasets:
-  files <- list.files("data/kallisto_out", include.dirs=F, recursive=T, full=T, pattern=".tsv$")[grep("trimmed", list.files("data/kallisto_out", include.dirs=F, recursive=T, full=T, pattern=".h5$"))]
-  
-# rename the files:
-  names(files) <- gsub("(^.*/.*out/|/.*$)", "", files)
-# Import the TPM for h9 d0 and d30
-  CM.TPM <- sapply(files, function(file) {read.csv(file, stringsAsFactors=F, sep="\t")[,5]})
+## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## 
+# CARDIO DATASET - convert from tximported counts to CPM
+# Create a very quick size factor calculation...
+# Counts per million + pseudocount
+  cm.sf <- colSums(CM.counts+1)/1e6
 
-# adding rownames
-  CM.TPM.rownames <- read.csv(files[1], stringsAsFactors=F, sep="\t")[,1]
-# cleaning of the names using the previously generated map file tx2gene  
-  CM.TPM <- CM.TPM[which(CM.TPM.rownames %in% tx2gene[,1]),]
-  CM.TPM.rownames <- CM.TPM.rownames[which(CM.TPM.rownames %in% tx2gene[,1])]
-  rownames(CM.TPM) <- tx2gene[match(CM.TPM.rownames, tx2gene[,1]),3]
-  
-# Cleaning column names
-  colnames(CM.TPM) <- as.character(gsub("(^.*/.*out/|/.*$)", "", files))
-  
-## We will combine the transcript level TPM into gene level TPM by summing the 
-## transcripts belonging to each gene...
-## make a nice new dataframe for ease
-#  CM.counts <- txi.kallisto$counts
-#  
-#  genelist <-  unique(tx2gene[,3])
-#
-#  pb <- txtProgressBar(min=0 ,max=length(genelist), style=3)
-#  CM.TPM.gene <- t(sapply(1:length(genelist), function(i){
-#    setTxtProgressBar(pb, i)
-#    return(colSums(CM.TPM[tx2gene[,3] == genelist[i],,drop=F]))
-#  }))
-#  rownames(CM.TPM.gene) = genelist
-
-  
-pb <- txtProgressBar(min=0 ,max=length(CM.markers), style=3)
-  CM.TPM.gene <- t(sapply(1:length(c(CM.markers,H9.markers)), function(i){
-    setTxtProgressBar(pb, i)
-    return(colSums(CM.TPM[rownames(CM.TPM) == c(CM.markers,H9.markers)[i],,drop=F]))
-  }))
-  rownames(CM.TPM.gene) = c(CM.markers,H9.markers)
-  
+# and normalise...
+  CM.genes <- t(t(CM.counts+1)/cm.sf)
+  cmml <- length(CM.markers)
  
-  CM.genes = CM.TPM.gene[CM.markers,]
-  cml <- length(CM.markers)
-  
+# subset by the markers for quicker computation
+  CM.genes = CM.genes[CM.markers,]
+
+# Create and format a results table for plotting  
   CM.genes.df <- data.frame(
-      "tpm"=log(as.vector(CM.genes)+1),
+      "log.cpm"=log(as.vector(CM.genes)+1),
       "gene"=rep(rownames(CM.genes), length(CM.genes[1,])), 
       "cell.type"=rep(c("H9", "H9", "CM", "CM"), each = length(CM.genes[,1])),
-      "group"=paste(rep(rownames(CM.genes), length(CM.genes[1,])),rep(c("H9", "H9", "CM", "CM"), each = length(CM.genes[,1])),sep=".")
+      "group"=paste(rep(rownames(CM.genes), length(CM.genes[1,])),
+      rep(c("H9", "H9", "CM", "CM"), each = length(CM.genes[,1])),sep=".")
     )
-  
   CM.genes.df <- CM.genes.df[order(CM.genes.df$group),]
 
-### H9 gene expression 
-  H9.genes = CM.TPM.gene[H9.markers,]
-  hml <- length(H9.markers)
-  
+# NC gene expression
+# normalise...
+  H9.genes <- t(t(CM.counts+1)/cm.sf)
+  h9ml <- length(H9.markers)
+
+# subset by NC markers  
+  H9.genes = H9.genes[H9.markers,]
+
+# Create and format a results table for plotting    
   H9.genes.df <- data.frame(
-      "tpm"=log(as.vector(H9.genes)+1),
+      "log.cpm"=log(as.vector(H9.genes)+1),
       "gene"=rep(rownames(H9.genes), length(H9.genes[1,])), 
       "cell.type"=rep(c("H9", "H9", "CM", "CM"), each = length(H9.genes[,1])),
-      "group"=paste(rep(rownames(H9.genes), length(H9.genes[1,])),rep(c("H9", "H9", "CM", "CM"), each = length(H9.genes[,1])),sep=".")
+      "group"=paste(rep(rownames(H9.genes), length(H9.genes[1,])),
+        rep(c("H9", "H9", "CM", "CM"), each = length(H9.genes[,1])),sep=".")
     )
-  
   H9.genes.df <- H9.genes.df[order(H9.genes.df$group),]
   
-# Combine them:  
+# combine results tables
   CM.genes.df <- rbind(CM.genes.df, H9.genes.df)
-  
+ 
   
 ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## 
 ##  BAR CHARTS 
 # Create our barplot dataframes...
 # This is pretty arduous, but it works
 # We're just formatting the data tables
-  CM.tpm.df <- data.frame(row.names=unique(CM.genes.df[,2]),
+  CM.cpm.df <- data.frame(row.names=unique(CM.genes.df[,2]),
       "CM.tpm" = sapply(1:(length(CM.genes.df[,1])/4), function(i){
       a <- seq(1,length(CM.genes.df[,1])-1, by=4)[i]
       b <- seq(2,length(CM.genes.df[,1]), by=4)[i]
@@ -313,7 +285,7 @@ pb <- txtProgressBar(min=0 ,max=length(CM.markers), style=3)
   )
 
 # Create our barplot dataframes...
-  EPI.tpm.df <- data.frame(row.names=unique(EPI.genes.df[,2]),
+  EPI.cpm.df <- data.frame(row.names=unique(EPI.genes.df[,2]),
       "EPI.tpm" = sapply(1:(length(EPI.genes.df[,1])/6), function(i){
       a <- seq(1,length(EPI.genes.df[,1])-1, by=6)[i]
       b <- seq(3,length(EPI.genes.df[,1]), by=6)[i]
@@ -341,11 +313,11 @@ pb <- txtProgressBar(min=0 ,max=length(CM.markers), style=3)
       
  par(mfrow=c(1,2), cex=0.7)
  # using my custom bar plot function
-  bars(EPI.tpm.df, error.data = EPI.error.df, col=c(Discrete[6], Discrete[9]), bar.width=0.31, ylab="log CPM")
+  bars(EPI.cpm.df, error.data = EPI.error.df, col=c(Discrete[6], Discrete[9]), bar.width=0.31, ylab="log CPM")
     legend("topright", legend=c("EPI", "NC"), col=c(Discrete[6], Discrete[9]), pch=15, bty="n")
     mtext("B", 3, adj=0)
     
-  bars(CM.tpm.df, error.data = CM.error.df, col=c(Discrete[7], Discrete[9]), bar.width=0.31, ylab="log TPM")
+  bars(CM.cpm.df, error.data = CM.error.df, col=c(Discrete[7], Discrete[9]), bar.width=0.31, ylab="log TPM")
     legend("topright", legend=c("CM", "H9"), col=c(Discrete[7], Discrete[9]), pch=15, bty="n")  
   
   
@@ -447,8 +419,8 @@ par(fig=c(0,1,0.3,1),new=F, omi=c(0,0,0,0),oma=c(1,1,1,1), mar=c(5,4,2,1))
   lines(x[,2], y[,2], col=Discrete[9], lty=2)
   lines(x[,3], y[,3], col=Discrete[7])
   lines(x[,4], y[,4], col=Discrete[7], lty=2)
-  text(tail(x[,1],1), tail(y[,1],1)-1000, c("D0"), cex=1, col=Discrete[9])
-  text(tail(x[,4],1), tail(y[,4],1)-1000, c("D30"), cex=1, col=Discrete[7])
+  text(tail(x[,1],1), tail(y[,1],1)-1000, c("H9"), cex=1, col=Discrete[9])
+  text(tail(x[,4],1), tail(y[,4],1)-1000, c("CM"), cex=1, col=Discrete[7])
 
   abline(v = 3e7, lty=2)
   abline(v = 2e7, lty=3)
@@ -459,22 +431,22 @@ par(fig=c(0,1,0.3,1),new=F, omi=c(0,0,0,0),oma=c(1,1,1,1), mar=c(5,4,2,1))
  # figure B 
 par(fig=c(0,0.37,0,0.3), new=T, mar=c(4,4,2,1))
  # using my custom bar plot function
-  bars(EPI.tpm.df[1:4,], error.data = EPI.error.df[1:4,], col=c(Discrete[6], Discrete[9]), bar.width=0.31, ylab="log CPM", las=3, ylim=c(0,6.5))
+  bars(EPI.cpm.df[1:4,], error.data = EPI.error.df[1:4,], col=c(Discrete[6], Discrete[9]), bar.width=0.31, ylab="log CPM", las=3, ylim=c(0,6.5))
     legend("topright", legend=c("EPI", "NC"), col=c(Discrete[6], Discrete[9]), pch=15, bty="n", y.intersp = 0.7)
     mtext("b", 3, adj=-0.05, font=2, padj=-1)
     mtext("Epicardial markers", 3, adj=0.5)
     par(fig=c(0.37,0.5,0,0.3), new=T, mar=c(4,0,2,1))
-    bars(EPI.tpm.df[5:6,], error.data = EPI.error.df[5:6,], col=c(Discrete[6], Discrete[9]), bar.width=0.31, ylab="log CPM", las=3, yaxt="n", ylim=c(0,6.5))
+    bars(EPI.cpm.df[5:6,], error.data = EPI.error.df[5:6,], col=c(Discrete[6], Discrete[9]), bar.width=0.31, ylab="log CPM", las=3, yaxt="n", ylim=c(0,6.5))
     mtext("Neural crest\nmarkers", 3, adj=0.5)
     
   par(fig=c(0.5,0.87,0,0.3), new=T, mar=c(4,4,2,1))
-    bars(CM.tpm.df[1:4,], error.data = CM.error.df[1:4,], col=c(Discrete[7], Discrete[9]), bar.width=0.31, ylab="log TPM", las=3, ylim=c(0,10))
-      legend("topleft", legend=c("CM", "H9"), col=c(Discrete[7], Discrete[9]), pch=15, bty="n", y.intersp = 0.7)  
+    bars(CM.cpm.df[1:4,], error.data = CM.error.df[1:4,], col=c(Discrete[7], Discrete[9]), bar.width=0.31, ylab="log CPM", las=3, ylim=c(0,10))
+      legend("topright", legend=c("CM", "H9"), col=c(Discrete[7], Discrete[9]), pch=15, bty="n", y.intersp = 0.7)  
     mtext("c", 3, adj=-0.05, font=2, padj=-1)
     mtext("Cardiomyocyte markers", 3, adj=0.5)
     
 par(fig=c(0.87,1,0,0.3), new=T, mar=c(4,0,2,1))
-  bars(CM.tpm.df[5:6,], error.data = CM.error.df[5:6,], col=c(Discrete[7], Discrete[9]), bar.width=0.31, ylab="log TPM", las=3, yaxt="n", ylim=c(0,10))
+  bars(CM.cpm.df[5:6,], error.data = CM.error.df[5:6,], col=c(Discrete[7], Discrete[9]), bar.width=0.31, ylab="log CPM", las=3, yaxt="n", ylim=c(0,10))
   mtext("H9 markers", 3, adj=0.5)
   
   
